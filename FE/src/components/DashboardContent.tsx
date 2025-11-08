@@ -1,20 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { useWebSocket, NotificationData } from '@/hooks/useWebSocket';
 import { tasksApi, usersApi, Task, CreateTaskDto, UpdateTaskDto } from '@/lib/api';
 import { TaskForm } from './TaskForm';
 import { TaskList } from './TaskList';
+import { NotificationContainer, Notification } from './Notification';
 
 export const DashboardContent: React.FC = () => {
   const { user, logout } = useAuth();
   const queryClient = useQueryClient();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  useWebSocket();
+  const handleNotification = useCallback((data: NotificationData) => {
+    const notification: Notification = {
+      id: `${Date.now()}-${Math.random()}`,
+      message: data.message,
+      eventType: data.eventType,
+      timestamp: new Date(data.timestamp),
+    };
+    
+    setNotifications((prev) => [...prev, notification]);
+
+    setTimeout(() => {
+      setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
+    }, 5000);
+  }, []);
+
+  useWebSocket(handleNotification);
+
+  const removeNotification = useCallback((id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, []);
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
     queryKey: ['tasks'],
@@ -67,6 +88,10 @@ export const DashboardContent: React.FC = () => {
 
   return (
     <div className="min-h-screen">
+      <NotificationContainer
+        notifications={notifications}
+        onRemove={removeNotification}
+      />
       <nav className="bg-white shadow-md p-4">
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold">Task Management System</h1>

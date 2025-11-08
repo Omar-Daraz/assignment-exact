@@ -204,6 +204,8 @@ export class TasksService {
 
   async remove(id: string, userId: string, userRole: string): Promise<void> {
     const task = await this.findOne(id, userId, userRole);
+    const assignedToId = task.assignedToId;
+    const taskTitle = task.title;
 
     await this.tasksRepository.delete(id);
 
@@ -216,7 +218,7 @@ export class TasksService {
       metadata: { taskId: id },
     });
 
-    this.webSocketGateway.emitTaskUpdate("task.deleted", { id });
+    this.webSocketGateway.emitTaskDeleted(id, assignedToId, taskTitle);
     await this.invalidateTasksCache();
   }
 }

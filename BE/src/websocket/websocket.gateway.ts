@@ -71,9 +71,10 @@ export class WebSocketGateway
     });
 
     if (task.assignedToId) {
-      this.server.to(`user:${task.assignedToId}`).emit("task-assigned", {
+      this.server.to(`user:${task.assignedToId}`).emit("task-notification", {
         eventType,
         task,
+        message: this.getNotificationMessage(eventType, task),
         timestamp: new Date(),
       });
     }
@@ -84,6 +85,42 @@ export class WebSocketGateway
         task,
         timestamp: new Date(),
       });
+    }
+  }
+
+  emitTaskDeleted(
+    taskId: string,
+    assignedToId: string | null,
+    taskTitle: string
+  ) {
+    this.server.emit("task-update", {
+      eventType: "task.deleted",
+      task: { id: taskId },
+      timestamp: new Date(),
+    });
+
+    if (assignedToId) {
+      this.server.to(`user:${assignedToId}`).emit("task-notification", {
+        eventType: "task.deleted",
+        task: { id: taskId, title: taskTitle },
+        message: `Task "${taskTitle}" has been deleted`,
+        timestamp: new Date(),
+      });
+    }
+  }
+
+  private getNotificationMessage(eventType: string, task: any): string {
+    switch (eventType) {
+      case "task.created":
+        return `A new task "${task.title}" has been assigned to you`;
+      case "task.assigned":
+        return `Task "${task.title}" has been assigned to you`;
+      case "task.status_changed":
+        return `Task "${task.title}" status has been updated to ${task.status}`;
+      case "task.updated":
+        return `Task "${task.title}" has been updated`;
+      default:
+        return `Task "${task.title}" has been updated`;
     }
   }
 }

@@ -9,7 +9,16 @@ import { useQueryClient } from "@tanstack/react-query";
 const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000";
 
-export const useWebSocket = () => {
+export interface NotificationData {
+  eventType: string;
+  task: Task | { id: string; title?: string };
+  message: string;
+  timestamp: string;
+}
+
+export const useWebSocket = (
+  onNotification?: (notification: NotificationData) => void
+) => {
   const { token, isAuthenticated } = useAuth();
   const socketRef = useRef<Socket | null>(null);
   const queryClient = useQueryClient();
@@ -46,6 +55,14 @@ export const useWebSocket = () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     });
 
+    socket.on("task-notification", (data: NotificationData) => {
+      console.log("Received task notification:", data);
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      if (onNotification) {
+        onNotification(data);
+      }
+    });
+
     socket.on("disconnect", () => {
       console.log("WebSocket disconnected");
     });
@@ -55,7 +72,7 @@ export const useWebSocket = () => {
     return () => {
       socket.disconnect();
     };
-  }, [isAuthenticated, token, queryClient]);
+  }, [isAuthenticated, token, queryClient, onNotification]);
 
   return socketRef.current;
 };
